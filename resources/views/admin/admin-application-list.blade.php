@@ -46,7 +46,7 @@
                         <p class="table__description--item">{{ $application->user->name }}</p>
                     </td>
                     <td class="table__description">
-                        <p class="table__description--item">{{ \Carbon\Carbon::parse($application->AttendanceRecord->date)->format('Y/m/d') }}</p>
+                        <p class="table__description--item">{{ \Carbon\Carbon::parse($application->Attendance->date)->format('Y/m/d') }}</p>
                     </td>
                     <td class="table__description">
                         <p class="table__description--item">{{ $application->comment }}</p>
@@ -94,7 +94,7 @@
                         <p class="table__description--item">{{ $application->user->name }}</p>
                     </td>
                     <td class="table__description">
-                        <p class="table__description--item">{{ \Carbon\Carbon::parse($application->AttendanceRecord->date)->format('Y/m/d') }}</p>
+                        <p class="table__description--item">{{ \Carbon\Carbon::parse($application->Attendance->date)->format('Y/m/d') }}</p>
                     </td>
                     <td class="table__description">
                         <p class="table__description--item">{{ $application->comment }}</p>
