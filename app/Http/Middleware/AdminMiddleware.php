@@ -11,8 +11,9 @@ class AdminMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         if (!auth()->check() || auth()->user()->role !== 'admin') {
-            return redirect()->route('login');
+            return redirect('/attendance');
         }
+
         return $next($request);
     }
 }

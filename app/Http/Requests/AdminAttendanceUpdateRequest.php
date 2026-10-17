@@ -22,10 +22,10 @@ class AdminAttendanceUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'new_clock_in'    => 'required|date_format:H:i',
-            'new_clock_out'   => 'required|date_format:H:i',
-            'new_break_in.*'  => 'nullable|date_format:H:i',
-            'new_break_out.*' => 'nullable|date_format:H:i',
+            'new_clock_in'    => 'required',
+            'new_clock_out'   => 'required',
+            'new_break_in.*'  => 'nullable',
+            'new_break_out.*' => 'nullable',
             'comment'         => 'required|string',
         ];
     }
@@ -51,9 +51,8 @@ class AdminAttendanceUpdateRequest extends FormRequest
                 return;
             }
 
-            // 画面からの入力値を比較用にCarbonインスタンスに変換
-            $clockIn  = Carbon::createFromFormat('H:i', $this->new_clock_in);
-            $clockOut = Carbon::createFromFormat('H:i', $this->new_clock_out);
+            $clockIn  = Carbon::parse($this->new_clock_in);
+            $clockOut = Carbon::parse($this->new_clock_out);
 
             // ❌ 1. 出勤時間が退勤時間より後、または退勤が出勤より前
             if ($clockIn->greaterThanOrEqualTo($clockOut)) {
@@ -68,9 +67,9 @@ class AdminAttendanceUpdateRequest extends FormRequest
             foreach ($breakIns as $index => $breakInStr) {
                 if (empty($breakInStr)) continue;
 
-                $breakIn = Carbon::createFromFormat('H:i', $breakInStr);
+                $breakIn = Carbon::parse($breakInStr);
                 $breakOutStr = $breakOuts[$index] ?? null;
-                $breakOut = $breakOutStr ? Carbon::createFromFormat('H:i', $breakOutStr) : null;
+                $breakOut = $breakOutStr ? Carbon::parce($breakOutStr) : null;
 
                 // ❌ 2. 休憩開始時間が出勤時間より前、または退勤時間より後
                 if ($breakIn->lessThan($clockIn) || $breakIn->greaterThan($clockOut)) {

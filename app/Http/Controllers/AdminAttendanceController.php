@@ -23,41 +23,18 @@ class AdminAttendanceController extends Controller
         $nextDay = $date->copy()->addDay()->format('Y-m-d');
 
         $users = User::where('role', 'general')->get();
-        $attendanceRecords = Attendance::with('breakLogs')->where('date', $dateStr)->get()->keyBy('user_id');
+        $attendance = Attendance::with('breaksLogs')->where('date', $dateStr)->get();
 
-        $formattedRecords = [];
-        foreach ($users as $user) {
-            $attendance = $attendanceRecords->get($user->id);
+        foreach ($attendance as $record) {
+            $record->clock_in  = $record->clock_in_at ? Carbon::parse($record->clock_in_at)->format('H:i') : null;
+            $record->clock_out = $record->clock_out_at ? Carbon::parse($record->clock_out_at)->format('H:i') : null;
 
-            if ($attendance) {
-                $totalBreakMinutes = 0;
-                foreach ($attendance->breakLogs as $break) {
-                    if ($break->break_in_at && $break->break_out_at) {
-                        $totalBreakMinutes += Carbon::parse($break->break_in_at)->diffInMinutes(Carbon::parse($break->break_out_at));
-                    }
-                }
-
-                $formattedRecords[] = [
-                    'id' => $attendance->id,
-                    'name' => $user->name,
-                    'clock_in' => $attendance->clock_in_at ? Carbon::parse($attendance->clock_in_at)->format('H:i') : '',
-                    'clock_out' => $attendance->clock_out_at ? Carbon::parse($attendance->clock_out_at)->format('H:i') : '',
-                    'total_break_time' => $totalBreakMinutes > 0 ? sprintf('%02d:%02d', floor($totalBreakMinutes / 60), $totalBreakMinutes % 60) : '',
-                    'total_time' => ($attendance->clock_in_at && $attendance->clock_out_at) ? sprintf('%02d:%02d', floor((Carbon::parse($attendance->clock_in_at)->diffInMinutes(Carbon::parse($attendance->clock_out_at)) - $totalBreakMinutes) / 60), (Carbon::parse($attendance->clock_in_at)->diffInMinutes(Carbon::parse($attendance->clock_out_at)) - $totalBreakMinutes) % 60) : '',
-                ];
-            } else {
-                $formattedRecords[] = [
-                    'id' => null,
-                    'name' => $user->name,
-                    'clock_in' => '',
-                    'clock_out' => '',
-                    'total_break_time' => '',
-                    'total_time' => ''
-                ];
-            }
+            $breakMinutes = $record->calculateTotalBreakMinutes();
+            $record->total_break_time = $breakMinutes > 0 ? sprintf('%02d:%02d', floor($breakMinutes / 60), $breakMinutes % 60) : null;
+            $record->total_time = $record->calculateActualWorkingTime();
         }
 
-        return view('admin.attendance-daily', compact('formattedRecords', 'date', 'previousDay', 'nextDay'));
+        return view('admin.admin-attendance-list', compact('users', 'attendance', 'date', 'previousDay', 'nextDay'));
     }
 
     /**
@@ -74,7 +51,7 @@ class AdminAttendanceController extends Controller
      */
     public function showAdminDetail($id)
     {
-        $attendance = Attendance::with('breakLogs')->findOrFail($id);
+        $attendance = Attendance::with('breaksLogs')->findOrFail($id);
         $user = User::findOrFail($attendance->user_id);
 
         $attendanceRecord = [
@@ -87,7 +64,7 @@ class AdminAttendanceController extends Controller
             'breaks'    => [],
         ];
 
-        foreach ($attendance->breakLogs as $break) {
+        foreach ($attendance->breaksLogs as $break) {
             $attendanceRecord['breaks'][] = [
                 'break_in'  => $break->break_in_at ? Carbon::parse($break->break_in_at)->format('H:i') : '',
                 'break_out' => $break->break_out_at ? Carbon::parse($break->break_out_at)->format('H:i') : '',
@@ -97,11 +74,13 @@ class AdminAttendanceController extends Controller
         $application = $attendance->attendanceCorrections()->where('approval_status', '承認待ち')->first();
         $attendanceRecord['approval_status'] = $application ? '承認待ち' : '通常';
 
-        return view('admin.attendance-detail', compact('attendanceRecord', 'user', 'application'));
+        return view('admin.admin-detail', compact('attendanceRecord', 'user', 'application'));
     }
 
     /**
      * スタッフ別勤怠一覧画面（管理者） 【/admin/attendance/staff/{id}】
+     * 💡 解決策：Bladeの41行目「$attendance['id']」という配列の呼び出し形式に完全同期させるため、
+     * データがある日も無い日も、すべてカチッとした「連想配列(array)」の形に統一して手渡します！
      */
     public function showStaffMonthly(Request $request, $id)
     {
@@ -113,7 +92,7 @@ class AdminAttendanceController extends Controller
         $nextMonth = $date->copy()->addMonth()->format('Y-m');
 
         $formattedAttendanceRecords = [];
-        $attendances = Attendance::with('breakLogs')->where('user_id', $user->id)
+        $attendances = Attendance::with('breaksLogs')->where('user_id', $user->id)
             ->whereBetween('date', [$date->copy()->startOfMonth()->format('Y-m-d'), $date->copy()->endOfMonth()->format('Y-m-d')])
             ->get()->keyBy('date');
 
@@ -122,33 +101,33 @@ class AdminAttendanceController extends Controller
             $attendance = $attendances->get($currentDayStr);
 
             if ($attendance) {
-                $totalBreakMinutes = 0;
-                foreach ($attendance->breakLogs as $break) {
-                    if ($break->break_in_at && $break->break_out_at) {
-                        $totalBreakMinutes += Carbon::parse($break->break_in_at)->diffInMinutes(Carbon::parse($break->break_out_at));
-                    }
-                }
+                // 💡 データがある日：Bladeの['キー名']で開けるように配列形式で格納
+                $breakMinutes = $attendance->calculateTotalBreakMinutes();
+                $totalBreakTime = $breakMinutes > 0 ? sprintf('%02d:%02d', floor($breakMinutes / 60), $breakMinutes % 60) : '';
+
                 $formattedAttendanceRecords[] = [
-                    'id' => $attendance->id,
-                    'date' => $date->copy()->day($i)->format('m/d'),
-                    'clock_in' => $attendance->clock_in_at ? Carbon::parse($attendance->clock_in_at)->format('H:i') : '',
-                    'clock_out' => $attendance->clock_out_at ? Carbon::parse($attendance->clock_out_at)->format('H:i') : '',
-                    'total_break_time' => $totalBreakMinutes > 0 ? sprintf('%02d:%02d', floor($totalBreakMinutes / 60), $totalBreakMinutes % 60) : '',
-                    'total_time' => ($attendance->clock_in_at && $attendance->clock_out_at) ? sprintf('%02d:%02d', floor((Carbon::parse($attendance->clock_in_at)->diffInMinutes(Carbon::parse($attendance->clock_out_at)) - $totalBreakMinutes) / 60), (Carbon::parse($attendance->clock_in_at)->diffInMinutes(Carbon::parse($attendance->clock_out_at)) - $totalBreakMinutes) % 60) : '',
+                    'id'               => $attendance->id,
+                    'date'             => $date->copy()->day($i)->format('m/d'),
+                    'clock_in'         => $attendance->clock_in_at ? Carbon::parse($attendance->clock_in_at)->format('H:i') : '',
+                    'clock_out'        => $attendance->clock_out_at ? Carbon::parse($attendance->clock_out_at)->format('H:i') : '',
+                    'total_break_time' => $totalBreakTime,
+                    'total_time'       => $attendance->calculateActualWorkingTime(),
                 ];
             } else {
+                // 💡 データがない欠勤日（土日など）：こちらも完全に同じ構造の配列で空枠を作ります
+                // これにより、Bladeの41行目（$attendance['id']）に差し掛かってもエラーを100%回避できます！
                 $formattedAttendanceRecords[] = [
-                    'id' => null,
-                    'date' => $date->copy()->day($i)->format('m/d'),
-                    'clock_in' => '',
-                    'clock_out' => '',
+                    'id'               => null,
+                    'date'             => $date->copy()->day($i)->format('m/d'),
+                    'clock_in'         => '',
+                    'clock_out'        => '',
                     'total_break_time' => '',
-                    'total_time' => ''
+                    'total_time'       => ''
                 ];
             }
         }
 
-        return view('admin.staff-monthly', compact('formattedAttendanceRecords', 'user', 'date', 'previousMonth', 'nextMonth'));
+        return view('admin.staff-attendance-list', compact('formattedAttendanceRecords', 'user', 'date', 'previousMonth', 'nextMonth'));
     }
 
     /**
@@ -162,18 +141,20 @@ class AdminAttendanceController extends Controller
             $dateStr = $attendance->date;
 
             $attendance->update([
-                'clock_in_at' => Carbon::createFromFormat('Y-m-d H:i', $dateStr . ' ' . $request->new_clock_in),
-                'clock_out_at' => Carbon::createFromFormat('Y-m-d H:i', $dateStr . ' ' . $request->new_clock_out),
+                'clock_in_at' => Carbon::parse($dateStr . ' ' . $request->new_clock_in),
+                'clock_out_at' => Carbon::parse($dateStr . ' ' . $request->new_clock_out),
                 'remarks' => $request->comment,
             ]);
 
             $existingBreaks = BreakLog::where('attendance_id', $attendance->id)->orderBy('id', 'asc')->get();
             foreach ($existingBreaks as $index => $breakLog) {
                 $breakInStr = $request->new_break_in[$index] ?? null;
+                $breakOutStr = $request->new_break_out[$index] ?? null;
+
                 if ($breakInStr) {
                     $breakLog->update([
-                        'break_in_at' => $dateStr . ' ' . $breakInStr . ':00',
-                        'break_out_at' => ($request->new_break_out[$index] ?? null) ? $dateStr . ' ' . $request->new_break_out[$index] . ':00' : null,
+                        'break_in_at' => Carbon::parse($dateStr . ' ' . $breakInStr),
+                        'break_out_at' => $breakOutStr ? Carbon::parse($dateStr . ' ' . $breakOutStr) : null,
                     ]);
                 } else {
                     $breakLog->delete();
@@ -181,15 +162,18 @@ class AdminAttendanceController extends Controller
             }
 
             $newIndex = count($existingBreaks);
-            if (!empty($request->new_break_in[$newIndex])) {
+            $addedBreakIn = $request->new_break_in[$newIndex] ?? null;
+            $addedBreakOut = $request->new_break_out[$newIndex] ?? null;
+
+            if ($addedBreakIn) {
                 BreakLog::create([
                     'attendance_id' => $attendance->id,
-                    'break_in_at' => $dateStr . ' ' . $request->new_break_in[$newIndex] . ':00',
-                    'break_out_at' => ($request->new_break_out[$newIndex] ?? null) ? $dateStr . ' ' . $request->new_break_out[$newIndex] . ':00' : null,
+                    'break_in_at' => Carbon::parse($dateStr . ' ' . $addedBreakIn),
+                    'break_out_at' => $addedBreakOut ? Carbon::parse($dateStr . ' ' . $addedBreakOut) : null,
                 ]);
             }
         });
 
-        return redirect()->route('admin.attendance.daily', ['date' => $attendance->date])->with('success', '修正完了しました。');
+        return redirect()->route('admin.attendance.daily', ['date' => $attendance->date])->with('success', '勤怠データを修正しました。');
     }
 }

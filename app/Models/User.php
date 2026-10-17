@@ -48,4 +48,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(Attendance::class);
     }
+
+    public function getAdminStatusAttribute(): bool
+    {
+        // ロールが admin の場合に true を返すことで、管理者ヘッダーが正常に出現します
+        return $this->role === 'admin';
+    }
 }

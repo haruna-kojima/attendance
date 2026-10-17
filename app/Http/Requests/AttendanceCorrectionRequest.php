@@ -7,12 +7,8 @@ use Carbon\Carbon;
 
 class AttendanceCorrectionRequest extends FormRequest
 {
-    /**
-     * リクエストを実行する権限のチェック
-     */
     public function authorize(): bool
     {
-        // ログイン中の一般ユーザーの操作なので true で通します
         return true;
     }
 
@@ -22,11 +18,11 @@ class AttendanceCorrectionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'new_clock_in'    => 'required|date_format:H:i',
-            'new_clock_out'   => 'required|date_format:H:i',
+            'new_clock_in'    => 'required',
+            'new_clock_out'   => 'required',
             // 休憩は複数回飛んでくるため「.*」を使って一括チェック
-            'new_break_in.*'  => 'nullable|date_format:H:i',
-            'new_break_out.*' => 'nullable|date_format:H:i',
+            'new_break_in.*'  => 'nullable',
+            'new_break_out.*' => 'nullable',
             'comment'         => 'required|string', // 👈 備考欄の必須チェック
         ];
     }
@@ -52,9 +48,8 @@ class AttendanceCorrectionRequest extends FormRequest
                 return;
             }
 
-            // 画面からの入力値を比較用にCarbonインスタンスに変換
-            $clockIn  = Carbon::createFromFormat('H:i', $this->new_clock_in);
-            $clockOut = Carbon::createFromFormat('H:i', $this->new_clock_out);
+            $clockIn  = Carbon::parse($this->new_clock_in);
+            $clockOut = Carbon::parse($this->new_clock_out);
 
             // ❌ 1. 出勤時間が退勤時間より後、または退勤が出勤より前
             if ($clockIn->greaterThanOrEqualTo($clockOut)) {
@@ -69,9 +64,9 @@ class AttendanceCorrectionRequest extends FormRequest
             foreach ($breakIns as $index => $breakInStr) {
                 if (empty($breakInStr)) continue;
 
-                $breakIn = Carbon::createFromFormat('H:i', $breakInStr);
+                $breakIn = Carbon::parse($breakInStr);
                 $breakOutStr = $breakOuts[$index] ?? null;
-                $breakOut = $breakOutStr ? Carbon::createFromFormat('H:i', $breakOutStr) : null;
+                $breakOut = $breakOutStr ? Carbon::parse($breakOutStr) : null;
 
                 // ❌ 2. 休憩開始時間が出勤時間より前、または退勤時間より後
                 if ($breakIn->lessThan($clockIn) || $breakIn->greaterThan($clockOut)) {
