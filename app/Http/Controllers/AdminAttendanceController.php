@@ -9,15 +9,17 @@ use App\Http\Requests\AdminAttendanceUpdateRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\View\View;
 
 class AdminAttendanceController extends Controller
 {
     /**
      * 勤怠一覧画面（管理者） 【/admin/attendance/list】 （日次勤怠一覧）
      */
-    public function showDaily(Request $request)
+    public function showDaily(Request $request): View
     {
-        $dateStr = $request->query('date', Carbon::today()->format('Y-m-d'));
+        $dateStr = (string) $request->query('date', Carbon::today()->format('Y-m-d'));
         $date = Carbon::parse($dateStr);
         $previousDay = $date->copy()->subDay()->format('Y-m-d');
         $nextDay = $date->copy()->addDay()->format('Y-m-d');
@@ -25,19 +27,21 @@ class AdminAttendanceController extends Controller
         // ① 一般ユーザー一覧を取得
         $users = User::where('role', 'general')->get();
 
-        // 💡 解決の核心：データが1件もない日でも、Bladeの「$attendance->where()」が走った時に
-        // 2周目で null になって気絶するのを防ぐため、全ユーザー分の「空のモデルの入れ物」をあらかじめ用意して手渡します！
-        $attendanceCollection = collect();
+        // 💡 【N+1解消の核心！】ループに入る前に、本日の勤怠実績と「休憩ログ(breaksLogs)」を
+        // 全員分まとめて一括で Eager Loading して脳内に記憶させます！
+        $todayAttendances = Attendance::with('breaksLogs')
+            ->where('date', $dateStr)
+            ->get()
+            ->keyBy('user_id'); // ユーザーIDを鍵にして検索しやすくします
+
+        $attendanceCollection = new \Illuminate\Database\Eloquent\Collection();
 
         foreach ($users as $user) {
-            // 本日の実績をデータベースから検索
-            $record = Attendance::with('breaksLogs')
-                ->where('user_id', $user->id)
-                ->where('date', $dateStr)
-                ->first();
+            // 💡 修正点：毎回SQLを発行せず、一括取得したメモリ内（$todayAttendances）データを探します！
+            // これにより、データベースへの通信回数が「人数分」から1回へ激減し、爆速化します。
+            $record = $todayAttendances->get($user->id);
 
             if ($record) {
-                // データがある日は表示用に時間をH:i形式に成形
                 $record->clock_in  = $record->clock_in_at ? Carbon::parse($record->clock_in_at)->format('H:i') : null;
                 $record->clock_out = $record->clock_out_at ? Carbon::parse($record->clock_out_at)->format('H:i') : null;
 
@@ -47,8 +51,6 @@ class AdminAttendanceController extends Controller
 
                 $attendanceCollection->push($record);
             } else {
-                // 💡 【重要ガード】データが1件もない日（土日など）は、このユーザー用の「空のAttendanceモデル」をその場で作ります
-                // これにより、Bladeのwhereがヒットした際、nullではなく「空のオブジェクト」が代入されるためクラッシュを100%回避できます！
                 $emptyRecord = new Attendance();
                 $emptyRecord->user_id = $user->id;
                 $emptyRecord->clock_in = '';
@@ -60,7 +62,6 @@ class AdminAttendanceController extends Controller
             }
         }
 
-        // 変数名をBladeが求めている「$attendance」として引き渡します
         $attendance = $attendanceCollection;
 
         return view('admin.admin-attendance-list', compact('users', 'attendance', 'date', 'previousDay', 'nextDay'));
@@ -69,7 +70,7 @@ class AdminAttendanceController extends Controller
     /**
      * スタッフ一覧画面（管理者） 【/admin/staff/list】
      */
-    public function showStaffList()
+    public function showStaffList(): View
     {
         $users = User::where('role', 'general')->get();
         return view('admin.staff-list', compact('users'));
@@ -78,7 +79,7 @@ class AdminAttendanceController extends Controller
     /**
      * 勤怠詳細画面（管理者） 【/admin/attendance/{id}】 (表示・GET)
      */
-    public function showAdminDetail($id)
+    public function showAdminDetail($id): View
     {
         $attendance = Attendance::with('breaksLogs')->findOrFail($id);
         $user = User::findOrFail($attendance->user_id);
@@ -111,7 +112,7 @@ class AdminAttendanceController extends Controller
      * 💡 解決策：Bladeの41行目「$attendance['id']」という配列の呼び出し形式に完全同期させるため、
      * データがある日も無い日も、すべてカチッとした「連想配列(array)」の形に統一して手渡します！
      */
-    public function showStaffMonthly(Request $request, $id)
+    public function showStaffMonthly(Request $request, $id): View
     {
         $user = User::findOrFail($id);
         $dateStr = $request->query('date', Carbon::now()->format('Y-m'));
@@ -162,11 +163,11 @@ class AdminAttendanceController extends Controller
     /**
      * 勤怠詳細画面（管理者） 【/admin/attendance/{id}】 (直接修正・POST)
      */
-    public function updateDirectly(AdminAttendanceUpdateRequest $request, $id)
+    public function updateDirectly(AdminAttendanceUpdateRequest $request, int $id): RedirectResponse
     {
         $attendance = Attendance::findOrFail($id);
 
-        DB::transaction(function () use ($request, $attendance) {
+        DB::transaction(function () use ($request, $attendance): void {
             $dateStr = $attendance->date;
 
             $attendance->update([

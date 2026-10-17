@@ -7,13 +7,15 @@ use App\Models\BreakLog;
 use App\Models\AttendanceCorrection;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\View\View;
 
 class AttendanceController extends Controller
 {
     /**
      * 打刻画面（勤怠登録画面）の表示
      */
-    public function showStamp()
+    public function showStamp(): View
     {
         $user = auth()->user();
         $today = Carbon::today()->format('Y-m-d');
@@ -36,7 +38,7 @@ class AttendanceController extends Controller
     /**
      * 出勤・休憩・退勤の打刻保存処理
      */
-    public function stamp(Request $request)
+    public function stamp(Request $request): RedirectResponse
     {
         $user = auth()->user();
         $today = Carbon::today()->format('Y-m-d');
@@ -113,7 +115,7 @@ class AttendanceController extends Controller
     /**
      * 自身の勤怠一覧画面の表示
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $user = auth()->user();
 
@@ -170,7 +172,7 @@ class AttendanceController extends Controller
     /**
      * 勤怠詳細画面の表示
      */
-    public function showDetail($id)
+    public function showDetail($id): View
     {
         $attendance = Attendance::with('breaksLogs')->findOrFail($id);
         $user = auth()->user();

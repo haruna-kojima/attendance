@@ -9,14 +9,16 @@ use App\Http\Requests\AttendanceCorrectionRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\View\View;
 
 class AttendanceCorrectionController extends Controller
 {
-    public function index()
+    public function index(): View
     {
         $user = auth()->user();
 
-        // 👑 管理者ユーザー（roleがadmin）の場合 (FN047)
+        // 👑 管理者ユーザー（roleがadmin）の場合
         if ($user->role === 'admin') {
             // 評価対象の「承認待ち」の申請データをすべて取得
             $pendingRequests = AttendanceCorrection::with(['user', 'attendance'])
@@ -34,7 +36,7 @@ class AttendanceCorrectionController extends Controller
             return view('admin.stamp-correction-request-list', compact('pendingRequests', 'approvedRequests'));
         }
 
-        // 👤 一般ユーザー（roleがgeneral）の場合 (FN031)
+        // 👤 一般ユーザー（roleがgeneral）の場合
         else {
             // 自分の「承認待ち」の申請データを取得
             $pendingRequests = AttendanceCorrection::with('attendance')
@@ -57,12 +59,12 @@ class AttendanceCorrectionController extends Controller
     /**
      * 一般ユーザーからの修正申請の保存 
      */
-    public function applyCorrection(AttendanceCorrectionRequest $request, $attendanceId)
+    public function applyCorrection(AttendanceCorrectionRequest $request, $attendanceId): RedirectResponse
     {
         $user = auth()->user();
         $attendance = Attendance::where('user_id', $user->id)->findOrFail($attendanceId);
 
-        DB::transaction(function () use ($request, $user, $attendance) {
+        DB::transaction(function () use ($request, $user, $attendance): void {
 
             // 複数回飛んでくる休憩データを、別のテーブルではなく
             // 配列（Json）として美しく成形して、1つのカラムにまとめて退避させます。
@@ -92,13 +94,13 @@ class AttendanceCorrectionController extends Controller
     /**
      * 管理者による申請の承認処理 
      */
-    public function approve(Request $request, $attendance_correct_request_id)
+    public function approve(Request $request, $attendance_correct_request_id): RedirectResponse
     {
         // ルーティング（routes/web.php）で定義した長名パラメータ名に完全一致させます
         $correction = AttendanceCorrection::findOrFail($attendance_correct_request_id);
         $attendance = Attendance::findOrFail($correction->attendance_id);
 
-        DB::transaction(function () use ($correction, $attendance) {
+        DB::transaction(function () use ($correction, $attendance): void {
             $dateStr = $attendance->date;
 
             $attendance->update([
