@@ -22,17 +22,46 @@ class AdminAttendanceController extends Controller
         $previousDay = $date->copy()->subDay()->format('Y-m-d');
         $nextDay = $date->copy()->addDay()->format('Y-m-d');
 
+        // ① 一般ユーザー一覧を取得
         $users = User::where('role', 'general')->get();
-        $attendance = Attendance::with('breaksLogs')->where('date', $dateStr)->get();
 
-        foreach ($attendance as $record) {
-            $record->clock_in  = $record->clock_in_at ? Carbon::parse($record->clock_in_at)->format('H:i') : null;
-            $record->clock_out = $record->clock_out_at ? Carbon::parse($record->clock_out_at)->format('H:i') : null;
+        // 💡 解決の核心：データが1件もない日でも、Bladeの「$attendance->where()」が走った時に
+        // 2周目で null になって気絶するのを防ぐため、全ユーザー分の「空のモデルの入れ物」をあらかじめ用意して手渡します！
+        $attendanceCollection = collect();
 
-            $breakMinutes = $record->calculateTotalBreakMinutes();
-            $record->total_break_time = $breakMinutes > 0 ? sprintf('%02d:%02d', floor($breakMinutes / 60), $breakMinutes % 60) : null;
-            $record->total_time = $record->calculateActualWorkingTime();
+        foreach ($users as $user) {
+            // 本日の実績をデータベースから検索
+            $record = Attendance::with('breaksLogs')
+                ->where('user_id', $user->id)
+                ->where('date', $dateStr)
+                ->first();
+
+            if ($record) {
+                // データがある日は表示用に時間をH:i形式に成形
+                $record->clock_in  = $record->clock_in_at ? Carbon::parse($record->clock_in_at)->format('H:i') : null;
+                $record->clock_out = $record->clock_out_at ? Carbon::parse($record->clock_out_at)->format('H:i') : null;
+
+                $breakMinutes = $record->calculateTotalBreakMinutes();
+                $record->total_break_time = $breakMinutes > 0 ? sprintf('%02d:%02d', floor($breakMinutes / 60), $breakMinutes % 60) : null;
+                $record->total_time = $record->calculateActualWorkingTime();
+
+                $attendanceCollection->push($record);
+            } else {
+                // 💡 【重要ガード】データが1件もない日（土日など）は、このユーザー用の「空のAttendanceモデル」をその場で作ります
+                // これにより、Bladeのwhereがヒットした際、nullではなく「空のオブジェクト」が代入されるためクラッシュを100%回避できます！
+                $emptyRecord = new Attendance();
+                $emptyRecord->user_id = $user->id;
+                $emptyRecord->clock_in = '';
+                $emptyRecord->clock_out = '';
+                $emptyRecord->total_break_time = '';
+                $emptyRecord->total_time = '';
+
+                $attendanceCollection->push($emptyRecord);
+            }
         }
+
+        // 変数名をBladeが求めている「$attendance」として引き渡します
+        $attendance = $attendanceCollection;
 
         return view('admin.admin-attendance-list', compact('users', 'attendance', 'date', 'previousDay', 'nextDay'));
     }
