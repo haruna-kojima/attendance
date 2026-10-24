@@ -45,6 +45,11 @@ class FortifyServiceProvider extends ServiceProvider
             return view('user.register');
         });
 
+        Fortify::verifyEmailView(function () {
+            // authフォルダの中の「verify-email.blade.php」を指定
+            return view('auth.verify-email');
+        });
+
         // ログイン画面（一般）
         Fortify::loginView(function () {
             return view('user.user-login');

@@ -27,18 +27,16 @@ class AdminAttendanceController extends Controller
         // ① 一般ユーザー一覧を取得
         $users = User::where('role', 'general')->get();
 
-        // 💡 【N+1解消の核心！】ループに入る前に、本日の勤怠実績と「休憩ログ(breaksLogs)」を
+        //【N+1解消の核心！】ループに入る前に、本日の勤怠実績と「休憩ログ(breaksLogs)」を
         // 全員分まとめて一括で Eager Loading して脳内に記憶させます！
         $todayAttendances = Attendance::with('breaksLogs')
             ->where('date', $dateStr)
             ->get()
-            ->keyBy('user_id'); // ユーザーIDを鍵にして検索しやすくします
+            ->keyBy('user_id');
 
         $attendanceCollection = new \Illuminate\Database\Eloquent\Collection();
 
         foreach ($users as $user) {
-            // 💡 修正点：毎回SQLを発行せず、一括取得したメモリ内（$todayAttendances）データを探します！
-            // これにより、データベースへの通信回数が「人数分」から1回へ激減し、爆速化します。
             $record = $todayAttendances->get($user->id);
 
             if ($record) {
@@ -63,8 +61,10 @@ class AdminAttendanceController extends Controller
         }
 
         $attendance = $attendanceCollection;
+        $attendanceRecords = $attendanceCollection;
 
-        return view('admin.admin-attendance-list', compact('users', 'attendance', 'date', 'previousDay', 'nextDay'));
+
+        return view('admin.admin-attendance-list', compact('users', 'attendance', 'attendanceRecords', 'date', 'previousDay', 'nextDay'));
     }
 
     /**
@@ -107,11 +107,6 @@ class AdminAttendanceController extends Controller
         return view('admin.admin-detail', compact('attendanceRecord', 'user', 'application'));
     }
 
-    /**
-     * スタッフ別勤怠一覧画面（管理者） 【/admin/attendance/staff/{id}】
-     * 💡 解決策：Bladeの41行目「$attendance['id']」という配列の呼び出し形式に完全同期させるため、
-     * データがある日も無い日も、すべてカチッとした「連想配列(array)」の形に統一して手渡します！
-     */
     public function showStaffMonthly(Request $request, $id): View
     {
         $user = User::findOrFail($id);

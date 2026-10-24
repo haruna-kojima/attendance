@@ -6,6 +6,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 use App\Http\Requests\RegisterRequest;
+use Illuminate\Support\Facades\Validator;
+
 
 class CreateNewUser implements CreatesNewUsers
 {
@@ -16,10 +18,15 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
-        // 💡 実際のバリデーションは、上のServiceProvider側で「RegisterRequest」が
-        // 先行して実行・エラー返却を行うため、ここでは安全にインサート処理だけを記述します。
+        // 💡 解決の力技：RegisterRequestからルールとメッセージを抽出し、
+        // 誤作動を起こさないように $input 配列に対してだけピンポイントでバリデーションを実行します！
+        $request = new RegisterRequest();
 
-        app(RegisterRequest::class)->validateResolved();
+        Validator::make(
+            $input,
+            $request->rules(),
+            $request->messages()
+        )->validate();
 
         return User::create([
             'name'     => $input['name'],
