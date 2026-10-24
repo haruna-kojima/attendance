@@ -178,19 +178,20 @@ class AttendanceController extends Controller
         $user = auth()->user();
 
         // Blade画面が指定するデータ構造(配列)にトランスフォーム(詰め替え)して引き渡す
-        $attendanceRecord = [
+        $data = [
             'id'            => $attendance->id,
             'year'          => Carbon::parse($attendance->date)->format('Y年'),
             'date'          => Carbon::parse($attendance->date)->format('n月j日'),
-            'new_clock_in'  => $attendance->clock_in_at ? Carbon::parse($attendance->clock_in_at)->format('H:i') : '',
-            'new_clock_out' => $attendance->clock_out_at ? Carbon::parse($attendance->clock_out_at)->format('H:i') : '',
+            'clock_in'  => $attendance->clock_in_at ? Carbon::parse($attendance->clock_in_at)->format('H:i') : '',
+            'clock_out' => $attendance->clock_out_at ? Carbon::parse($attendance->clock_out_at)->format('H:i') : '',
             'comment'       => $attendance->remarks,
             'breaks'        => [],
+            'application'   => $attendance->attendanceCorrections()->where('approval_status', '承認待ち')->first(),
         ];
 
         // 休憩回数分ループさせて既存データを出力
         foreach ($attendance->breaksLogs as $break) {
-            $attendanceRecord['breaks'][] = [
+            $data['breaks'][] = [
                 'break_in'  => $break->break_in_at ? Carbon::parse($break->break_in_at)->format('H:i') : '',
                 'break_out' => $break->break_out_at ? Carbon::parse($break->break_out_at)->format('H:i') : '',
             ];
@@ -205,6 +206,6 @@ class AttendanceController extends Controller
         // 承認待ちが存在する場合はステータスを切り替え、Blade側で「承認待ちのため修正はできません。」の警告表示やロックを連動
         $attendanceRecord['approval_status'] = $application ? '承認待ち' : '通常';
 
-        return view('user.user-detail', compact('attendanceRecord', 'user', 'application'));
+        return view('user.user-detail', compact('data', 'attendanceRecord', 'user', 'application'));
     }
 }

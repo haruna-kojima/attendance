@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Attendance;
 use App\Models\BreakLog;
+use App\Models\AttendanceCorrection;
 use App\Http\Requests\AdminAttendanceUpdateRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -101,10 +102,38 @@ class AdminAttendanceController extends Controller
             ];
         }
 
-        $application = $attendance->attendanceCorrections()->where('approval_status', '承認待ち')->first();
-        $attendanceRecord['approval_status'] = $application ? '承認待ち' : '通常';
+        return view('admin.admin-detail', compact('attendanceRecord', 'user'));
+    }
 
-        return view('admin.admin-detail', compact('attendanceRecord', 'user', 'application'));
+    public function showApprovalDetail($id): View
+    {
+        // 申請データ(AttendanceCorrection)を主軸として取得し、リレーションをEager Loadします
+        $application = AttendanceCorrection::with('user')->findOrFail($id);
+        $user = $application->user;
+
+        // 管理者1枚目のブレード内での「$application->new_date->format()」というCarbonインスタンス利用に備え、
+        // データベースから読み込んだ日付文字列をCarbonインスタンスへ動的にパース・キャストしてセットします。
+        // ※（モデルの $casts で new_date => 'date' が未設定の場合の保険です）
+        if (is_string($application->new_date)) {
+            $application->new_date = Carbon::parse($application->new_date);
+        } elseif (!$application->new_date && $application->attendance) {
+            $application->new_date = Carbon::parse($application->attendance->date);
+        }
+
+        // 💡 修正申請で提案されている休憩データをブレードのループ（$application->proposalBreaks）へマッピングして供給します
+        // json_encodeされた休憩データを、ブレードがオブジェクト形式のプロパティチェーン（->break_in）で読めるようにFluentに変換します
+        $decodedBreaks = json_decode($application->new_breaks, true) ?? [];
+        $proposalBreaksCollection = collect();
+        foreach ($decodedBreaks as $b) {
+            $proposalBreaksCollection->push(new \Illuminate\Support\Fluent([
+                'break_in'  => $b['break_in'] ?? '',
+                'break_out' => $b['break_out'] ?? '',
+            ]));
+        }
+        $application->proposalBreaks = $proposalBreaksCollection;
+
+        // 💡 戻り先ビューを、承認用の「admin.admin-application-detail」（管理者1枚目）に設定
+        return view('admin.admin-application-detail', compact('application', 'user'));
     }
 
     public function showStaffMonthly(Request $request, $id): View
@@ -139,8 +168,6 @@ class AdminAttendanceController extends Controller
                     'total_time'       => $attendance->calculateActualWorkingTime(),
                 ];
             } else {
-                // 💡 データがない欠勤日（土日など）：こちらも完全に同じ構造の配列で空枠を作ります
-                // これにより、Bladeの41行目（$attendance['id']）に差し掛かってもエラーを100%回避できます！
                 $formattedAttendanceRecords[] = [
                     'id'               => null,
                     'date'             => $date->copy()->day($i)->format('m/d'),

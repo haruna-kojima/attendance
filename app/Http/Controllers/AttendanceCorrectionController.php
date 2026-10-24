@@ -11,9 +11,11 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
+use Illuminate\Support\Fluent;
 
 class AttendanceCorrectionController extends Controller
 {
+    // 修正申請一覧の表示
     public function index(): View
     {
         $user = auth()->user();
@@ -26,8 +28,7 @@ class AttendanceCorrectionController extends Controller
 
             foreach ($requests as $req) {
                 $targetDate = $req->attendance ? $req->attendance->date : ($req->created_at ? $req->created_at->format('Y-m-d') : '');
-
-                $applications[] = [
+                $applications[] = new Fluent([
                     'id'               => $req->id,
                     'approval_status'  => $req->approval_status,
                     'date'             => $targetDate,
@@ -35,13 +36,13 @@ class AttendanceCorrectionController extends Controller
                     'application_date' => $req->created_at ? $req->created_at->format('Y-m-d') : '',
                     'user_name'        => $req->user ? $req->user->name : '',
                     'name'             => $req->user ? $req->user->name : '',
-                    'user'             => $req->user ? [
-                        'name' => $req->user->name
-                    ] : null,
-                ];
+                    'user'             => new Fluent(['name' => $req->user ? $req->user->name : '']),
+                    'AttendanceRecord' => new Fluent(['date' => $targetDate]),
+                ]);
             }
 
-            return view('admin.admin-application-list', compact('applications', 'user'));
+            $formattedApplications = $applications;
+            return view('admin.admin-application-list', compact('applications', 'formattedApplications', 'user'));
         } else {
             $requests = AttendanceCorrection::with('attendance')
                 ->where('user_id', $user->id)
@@ -51,7 +52,7 @@ class AttendanceCorrectionController extends Controller
             foreach ($requests as $req) {
                 $targetDate = $req->attendance ? $req->attendance->date : ($req->created_at ? $req->created_at->format('Y-m-d') : '');
 
-                $formattedApplications[] = [
+                $applications[] = new Fluent([
                     'id'               => $req->id,
                     'approval_status'  => $req->approval_status,
                     'date'             => $targetDate,
@@ -59,13 +60,17 @@ class AttendanceCorrectionController extends Controller
                     'application_date' => $req->created_at ? $req->created_at->format('Y-m-d') : '',
                     'user_name'        => $user->name,
                     'name'             => $user->name,
-                ];
+                    'user'             => new Fluent(['name' => $user->name]),
+                    'AttendanceRecord' => new Fluent(['date' => $targetDate]),
+                ]);
             }
 
-            return view('user.user-application-list', compact('formattedApplications', 'user'));
+            $formattedApplications = $applications;
+            return view('user.user-application-list', compact('applications', 'formattedApplications', 'user'));
         }
     }
 
+    // 一般ユーザーからの修正申請の保存
     public function applyCorrection(AttendanceCorrectionRequest $request, $attendanceId): RedirectResponse
     {
         $user = auth()->user();
@@ -95,6 +100,8 @@ class AttendanceCorrectionController extends Controller
         return redirect()->route('correction.list')->with('success', '修正申請を送信しました。');
     }
 
+
+    // 管理者による申請の承認処理
     public function approve(Request $request, $attendance_correct_request_id): RedirectResponse
     {
         $correction = AttendanceCorrection::findOrFail($attendance_correct_request_id);
