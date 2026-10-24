@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\BreakLog;
 use App\Models\AttendanceCorrection;
+use App\Services\AttendanceReportService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -112,9 +113,6 @@ class AttendanceController extends Controller
         return redirect()->back();
     }
 
-    /**
-     * 自身の勤怠一覧画面の表示
-     */
     public function index(Request $request): View
     {
         $user = auth()->user();
@@ -135,13 +133,12 @@ class AttendanceController extends Controller
 
         $formattedAttendanceRecords = [];
 
-        // 💡 該当月の日数（28〜31日）分ループし、実績がない日も空白レコードとして美しく再現
         for ($i = 1; $i <= $date->daysInMonth; $i++) {
             $currentDayStr = $date->copy()->day($i)->format('Y-m-d');
             $attendance = $attendances->get($currentDayStr);
 
             if ($attendance) {
-                // 💡 モデル側に集計処理が書いてあるため、コントローラは1行呼ぶだけで「極限までスリム」を維持
+                // モデル側に集計処理を記載
                 $breakMinutes = $attendance->calculateTotalBreakMinutes();
                 $totalBreakTime = $breakMinutes > 0 ? sprintf('%02d:%02d', floor($breakMinutes / 60), $breakMinutes % 60) : '';
 
@@ -154,7 +151,7 @@ class AttendanceController extends Controller
                     'total_time'       => $attendance->calculateActualWorkingTime(), // モデルから取得
                 ];
             } else {
-                // F勤怠情報がないフィールド（欠勤日や未来の日付など）は空白にする
+                // 勤怠情報がない日は空白にする
                 $formattedAttendanceRecords[] = [
                     'id'               => null,
                     'date'             => $date->copy()->day($i)->format('m/d'),
@@ -169,15 +166,13 @@ class AttendanceController extends Controller
         return view('user.user-attendance-list', compact('formattedAttendanceRecords', 'date', 'previousMonth', 'nextMonth'));
     }
 
-    /**
-     * 勤怠詳細画面の表示
-     */
+    // 勤怠詳細画面の表示
     public function showDetail($id): View
     {
         $attendance = Attendance::with('breaksLogs')->findOrFail($id);
         $user = auth()->user();
 
-        // Blade画面が指定するデータ構造(配列)にトランスフォーム(詰め替え)して引き渡す
+        // Blade画面が指定するデータ構造詰め替えて引き渡す
         $data = [
             'id'            => $attendance->id,
             'year'          => Carbon::parse($attendance->date)->format('Y年'),
@@ -207,5 +202,13 @@ class AttendanceController extends Controller
         $attendanceRecord['approval_status'] = $application ? '承認待ち' : '通常';
 
         return view('user.user-detail', compact('data', 'attendanceRecord', 'user', 'application'));
+    }
+
+
+    public function showReport(AttendanceReportService $reportService): \Illuminate\View\View
+    {
+        $reportData = $reportService->getMonthlyReportData(auth()->user());
+
+        return view('reports.index', $reportData);
     }
 }
