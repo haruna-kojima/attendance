@@ -20,10 +20,9 @@ class AttendanceCorrectionRequest extends FormRequest
         return [
             'new_clock_in'    => 'required',
             'new_clock_out'   => 'required',
-            // 休憩は複数回飛んでくるため「.*」を使って一括チェック
             'new_break_in.*'  => 'nullable',
             'new_break_out.*' => 'nullable',
-            'comment'         => 'required|string', // 👈 備考欄の必須チェック
+            'comment'         => 'required|string',
         ];
     }
 
@@ -51,7 +50,7 @@ class AttendanceCorrectionRequest extends FormRequest
             $clockIn  = Carbon::parse($this->new_clock_in);
             $clockOut = Carbon::parse($this->new_clock_out);
 
-            // ❌ 1. 出勤時間が退勤時間より後、または退勤が出勤より前
+            // 出勤時間が退勤時間より後、または退勤が出勤より前
             if ($clockIn->greaterThanOrEqualTo($clockOut)) {
                 $validator->errors()->add('new_clock_in', '出勤時間もしくは退勤時間が不適切な値です');
                 $validator->errors()->add('new_clock_out', '出勤時間もしくは退勤時間が不適切な値です');
@@ -68,13 +67,13 @@ class AttendanceCorrectionRequest extends FormRequest
                 $breakOutStr = $breakOuts[$index] ?? null;
                 $breakOut = $breakOutStr ? Carbon::parse($breakOutStr) : null;
 
-                // ❌ 2. 休憩開始時間が出勤時間より前、または退勤時間より後
+                // 休憩開始時間が出勤時間より前、または退勤時間より後
                 if ($breakIn->lessThan($clockIn) || $breakIn->greaterThan($clockOut)) {
                     $validator->errors()->add("new_break_in.{$index}", '休憩時間が不適切な値です');
                 }
 
                 if ($breakOut) {
-                    // ❌ 3. 休憩終了時間が退勤時間より後
+                    // 休憩終了時間が退勤時間より後
                     if ($breakOut->greaterThan($clockOut)) {
                         $validator->errors()->add("new_break_out.{$index}", '休憩時間もしくは退勤時間が不適切な値です');
                     }

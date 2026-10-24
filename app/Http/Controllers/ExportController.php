@@ -11,13 +11,15 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class ExportController extends Controller
 {
     /**
-     * 管理者用 スタッフ別月次勤怠データのCSVダウンロード機能
+     * 【★ FN045】スタッフ毎の月次勤怠データをフォーム（POST）から受け取ってCSVダウンロード
      */
-    public function exportCsv(Request $request, $id): StreamedResponse
+    public function exportCsv(Request $request): StreamedResponse
     {
-        $user = User::findOrFail($id);
+        // ブレードの input[name="user_id"] と input[name="year_month"] から値を取得
+        $userId = $request->input('user_id');
+        $dateStr = $request->input('year_month');
 
-        $dateStr = (string) $request->query('date', Carbon::now()->format('Y-m'));
+        $user = User::findOrFail($userId);
         $date = Carbon::createFromFormat('Y-m', $dateStr)->startOfMonth();
 
         $attendances = Attendance::with('breaksLogs')
@@ -34,7 +36,7 @@ class ExportController extends Controller
 
             fwrite($stream, pack('C*', 0xEF, 0xBB, 0xBF));
 
-            fputcsv($stream, ['日付', '出勤時間', '退勤時間', '休憩時間', '労働時間']);
+            fputcsv($stream, ['日付', '出勤', '退勤', '休憩', '合計']);
 
             for ($i = 1; $i <= $date->daysInMonth; $i++) {
                 $currentDayStr = $date->copy()->day($i)->format('Y-m-d');
@@ -42,14 +44,14 @@ class ExportController extends Controller
 
                 if ($attendance) {
                     $breakMinutes = $attendance->calculateTotalBreakMinutes();
-                    $totalBreakTime = $breakMinutes > 0 ? sprintf('%02d:%02d', floor($breakMinutes / 60), $breakMinutes % 60) : '00:00';
+                    $totalBreakTime = $breakMinutes > 0 ? sprintf('%02d:%02d', floor($breakMinutes / 60), $breakMinutes % 60) : '';
 
                     fputcsv($stream, [
                         $date->copy()->day($i)->format('m/d'),
                         $attendance->clock_in_at ? Carbon::parse($attendance->clock_in_at)->format('H:i') : '',
                         $attendance->clock_out_at ? Carbon::parse($attendance->clock_out_at)->format('H:i') : '',
                         $totalBreakTime,
-                        $attendance->calculateActualWorkingTime() ?: '00:00'
+                        $attendance->calculateActualWorkingTime() ?: ''
                     ]);
                 } else {
                     fputcsv($stream, [

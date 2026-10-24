@@ -38,11 +38,11 @@
         </thead>
         <tbody>
             @foreach($monthlyTrend as $row)
-                <tr>
-                    <td>{{ $row['month'] }}</td>
-                    <td>{{ floor($row['work_minutes'] / 60) }}h {{ $row['work_minutes'] % 60 }}m</td>
-                    <td>{{ floor($row['overtime_minutes'] / 60) }}h {{ $row['overtime_minutes'] % 60 }}m</td>
-                </tr>
+            <tr>
+                <td>{{ $row['month'] }}</td>
+                <td>{{ floor($row['work_minutes'] / 60) }}h {{ $row['work_minutes'] % 60 }}m</td>
+                <td>{{ floor($row['overtime_minutes'] / 60) }}h {{ $row['overtime_minutes'] % 60 }}m</td>
+            </tr>
             @endforeach
         </tbody>
     </table>
