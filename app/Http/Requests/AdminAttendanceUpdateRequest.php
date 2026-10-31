@@ -8,7 +8,7 @@ use Carbon\Carbon;
 class AdminAttendanceUpdateRequest extends FormRequest
 {
     /**
-     * 💡 管理者権限チェック（強固なガード）
+     * 管理者権限チェック
      * ログインしており、かつロールが「admin」のユーザーのみこの処理を許可します
      */
     public function authorize(): bool
@@ -17,7 +17,7 @@ class AdminAttendanceUpdateRequest extends FormRequest
     }
 
     /**
-     * ① 単一項目の基本制限ルール（FN038）
+     * 単一項目の基本制限ルール
      */
     public function rules(): array
     {
@@ -31,7 +31,7 @@ class AdminAttendanceUpdateRequest extends FormRequest
     }
 
     /**
-     * ② 単一項目エラーメッセージの定義
+     * 単一項目エラーメッセージの定義
      */
     public function messages(): array
     {
@@ -41,7 +41,7 @@ class AdminAttendanceUpdateRequest extends FormRequest
     }
 
     /**
-     * ③ 時間の前後関係をチェックする「相関バリデーション｣
+     * 時間の前後関係をチェックする「相関バリデーション｣S
      */
     public function withValidator($validator)
     {
@@ -54,7 +54,7 @@ class AdminAttendanceUpdateRequest extends FormRequest
             $clockIn  = Carbon::parse($this->new_clock_in);
             $clockOut = Carbon::parse($this->new_clock_out);
 
-            // ❌ 1. 出勤時間が退勤時間より後、または退勤が出勤より前
+            // × 出勤時間が退勤時間より後、または退勤が出勤より前
             if ($clockIn->greaterThanOrEqualTo($clockOut)) {
                 $validator->errors()->add('new_clock_in', '出勤時間もしくは退勤時間が不適切な値です');
                 $validator->errors()->add('new_clock_out', '出勤時間もしくは退勤時間が不適切な値です');
@@ -69,15 +69,15 @@ class AdminAttendanceUpdateRequest extends FormRequest
 
                 $breakIn = Carbon::parse($breakInStr);
                 $breakOutStr = $breakOuts[$index] ?? null;
-                $breakOut = $breakOutStr ? Carbon::parce($breakOutStr) : null;
+                $breakOut = $breakOutStr ? Carbon::parse($breakOutStr) : null;
 
-                // ❌ 2. 休憩開始時間が出勤時間より前、または退勤時間より後
+                // × 休憩開始時間が出勤時間より前、または退勤時間より後
                 if ($breakIn->lessThan($clockIn) || $breakIn->greaterThan($clockOut)) {
                     $validator->errors()->add("new_break_in.{$index}", '休憩時間が不適切な値です');
                 }
 
                 if ($breakOut) {
-                    // ❌ 3. 休憩終了時間が退勤時間より後
+                    // × 休憩終了時間が退勤時間より後
                     if ($breakOut->greaterThan($clockOut)) {
                         $validator->errors()->add("new_break_out.{$index}", '休憩時間もしくは退勤時間が不適切な値です');
                     }

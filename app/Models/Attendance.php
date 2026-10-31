@@ -21,7 +21,7 @@ class Attendance extends Model
         return $this->hasMany(BreakLog::class);
     }
 
-    // 💡 500バグの修正：コントローラーやテスト環境が「$attendance->breaks」と呼んでもエラーにならずに自動変換するアクセサ
+    // コントローラーやテスト環境が「$attendance->breaks」と呼んでもエラーにならずに自動変換するアクセサ
     public function getBreaksAttribute()
     {
         return $this->breaksLogs;

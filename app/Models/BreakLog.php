@@ -17,7 +17,9 @@ class BreakLog extends Model
         'break_out_at',
     ];
 
-    // どの勤怠データに紐づく休憩か (多対1)
+    /**
+     * どの勤怠データに紐づく休憩か (多対1)
+     */
     public function attendance()
     {
         return $this->belongsTo(Attendance::class);

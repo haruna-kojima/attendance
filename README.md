@@ -1,66 +1,186 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# アプリケーション名
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+COACHTECH 勤怠管理アプリ
 
-## About Laravel
+# 概要
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+会員登録したユーザーは勤怠の打刻、勤怠状況の閲覧、打刻修正の申請ができる。
+管理者はユーザーの勤怠状況、詳細、申請内容の閲覧・承認ができる。
+   
+## 環境構築手順
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+1. **リポジトリをクローン**
+````bash
+    git clone https://github.com/haruna-kojima/attendance.git
+    cd attendance
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+    ※ MySQLは、OSによって起動しない場合があるのでそれぞれのPCに合わせて docker-compose.ymlファイルを編集してください。
+````
 
-## Learning Laravel
+2. **.env.exampleの中身を確認**
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+データベース接続情報が以下と一致していることを確認します。
+````bash
+    DB_CONNECTION=mysql
+    DB_HOST=mysql
+    DB_PORT=3306
+    DB_DATABASE=laravel
+    DB_USERNAME=sail
+    DB_PASSWORD=password
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+    MAIL_MAILER=smtp
+    MAIL_HOST=mailpit
+    MAIL_PORT=1025
+````
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+3. **.envファイルの準備**
+````bash
+    cp .env.example .env
+````
+4. **Composer依存パッケージのインストール**
 
-## Laravel Sponsors
+````bash
+    docker run --rm \
+        -u "$(id -u):$(id -g)" \
+        -v "$(pwd):/var/www/html" \
+        -w /var/www/html \
+        -e COMPOSER_CACHE_DIR=/tmp/composer_cache \
+        laravelsail/php82-composer:latest \
+        composer install --ignore-platform-reqs
+````
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+5. **Laravel Sailの起動**
 
-### Premium Partners
+````bash
+    ./vendor/bin/sail up -d --build
+````
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+6. **アプリケーションキーの生成**
 
-## Contributing
+````bash
+    ./vendor/bin/sail artisan key:generate
+````
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+7. **データベースのマイグレーションと初期データ投入**
 
-## Code of Conduct
+````bash
+    ./vendor/bin/sail artisan migrate --seed
+````
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+8. **フロントエンドのビルド**
 
-## Security Vulnerabilities
+````bash
+    ./vendor/bin/sail npm install
+    ./vendor/bin/sail npm run dev
+````
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+9. **アプリケーションへのアクセス**
 
-## License
+````bash
+    一般ユーザーログイン http://localhost/login
+    管理者ログイン http://localhost/admin/login
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+    ユーザー情報
+    ユーザー1（一般）　メールアドレス：user1@example.com　パスワード：password
+    ユーザー2（一般）　メールアドレス：user2@example.com　パスワード：password
+    ユーザー2（管理者）　メールアドレス：user3@example.com　パスワード：password
+````
+
+
+## ER図
+
+```mermaid
+erDiagram
+    users ||--o{ attendances : "複数の勤怠を持つ"
+    users ||--o{ attendance_corrections : "複数の修正申請を持つ"
+    attendances ||--o{ breaks : "複数の休憩を持つ"
+    attendances ||--o{ attendance_corections : "複数の修正申請を持つ"
+
+
+    users {
+        bigint id PK "ID"
+        string name "名前"  
+        string email "メールアドレス"
+        timestamp email_verified_at ”メール確認日時”
+        string password "パスワード"
+        string role "権限(デフォルト:heneral)"
+        string remember_token "ログイン保持トークン"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    attendances {
+        bigint id PK "ID"
+        bigint user_id FK
+        date date "日付"
+        timestamp clock_in_at "出勤時間"
+        timestamp clock_out_at "退勤時間"
+        enum status "勤怠状況"
+        text remarks 
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    breaks {
+        bigint id PK "ID"
+        bigint attendance_id FK
+        timestamp break_in_at "休憩開始時間"
+        timestamp break_out_at "休憩終了時間"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    attendance_corrections {
+        bigint id PK "ID"
+        bigint attendance_id FK
+        bigint user_id FK
+        string new_clock_in "修正出勤時間"
+        string new_clock_out "修正退勤時間"
+        json new_breaks
+        enum approval_status "承認状況"
+        text comment "備考"
+        timestamp created_at
+        timestamp updated_at
+    }
+```    
+ 
+## 使用技術
+
+````bash
+    - Laravel 10.x
+    - PHP 8.2
+    - Tailwind CSS
+    - DB MySQL8.4
+    - Webサーバー Nginx
+    - フロントエンド Vite, Tailwind CSS ^3.4.0
+    - 開発ツール Docker,Laravel Sail,phpAcmin
+````
+
+## APIエンドポイント一覧
+    
+| 処理内容 | HTTPメソッド | パス (URL) | 必須パラメータ | HTTPステータス |
+| :--- | :---: | :--- | :--- | :---: |
+| **お問い合わせ一覧取得** | `GET` | `/api/v1/contacts` | 任意 (検索・ページネーション) | `200 OK` |
+| **お問い合わせ詳細取得** | `GET` | `/api/v1/contacts/{id}` | パスパラメータ: `id` | `200 OK` / `404` |
+| **お問い合わせ新規作成** | `POST` | `/api/v1/contacts` | リクエストボディ (全必須項目) | `201 Created` / `422` |
+| **お問い合わせ情報の更新** | `PUT` | `/api/v1/contacts/{id}` | リクエストボディ、パス: `id` | `200 OK` / `404` / `422` |
+| **お問い合わせデータの削除** | `DELETE` | `/api/v1/contacts/{id}` | パスパラメータ: `id` | `204 No Content` / `404` |
+
+## テスト実行
+
+````bash
+    単体テストの実行
+    .vendor/bin/sail artisan test tests/Unit/ContactWebUnitTest.php
+    すべてのテストを一括実行
+    ./vendor/bin/sail artisan test --display-deprecations
+````
+
+## 開発環境URL
+````bash
+    お問い合わせフォーム http://localhost
+    管理者ログイン http://localhost/login
+````
+
+## 作成者
+
+小島　春菜

@@ -15,9 +15,7 @@ use Illuminate\View\View;
 
 class AdminAttendanceController extends Controller
 {
-    /**
-     * 勤怠一覧画面（管理者） 【/admin/attendance/list】 （日次勤怠一覧）
-     */
+    // 勤怠一覧画面（管理者）
     public function showDaily(Request $request): View
     {
         $dateStr = (string) $request->query('date', Carbon::today()->format('Y-m-d'));
@@ -25,11 +23,10 @@ class AdminAttendanceController extends Controller
         $previousDay = $date->copy()->subDay()->format('Y-m-d');
         $nextDay = $date->copy()->addDay()->format('Y-m-d');
 
-        // ① 一般ユーザー一覧を取得
+        // 一般ユーザー一覧を取得
         $users = User::where('role', 'general')->get();
 
-        //【N+1解消の核心！】ループに入る前に、本日の勤怠実績と「休憩ログ(breaksLogs)」を
-        // 全員分まとめて一括で Eager Loading して脳内に記憶させます！
+        //N+1解消 ループに入る前に、本日の勤怠実績と休憩ログを一括で Eager Loading
         $todayAttendances = Attendance::with('breaksLogs')
             ->where('date', $dateStr)
             ->get()
@@ -68,18 +65,14 @@ class AdminAttendanceController extends Controller
         return view('admin.admin-attendance-list', compact('users', 'attendance', 'attendanceRecords', 'date', 'previousDay', 'nextDay'));
     }
 
-    /**
-     * スタッフ一覧画面（管理者） 【/admin/staff/list】
-     */
+    // スタッフ一覧画面(管理者)
     public function showStaffList(): View
     {
         $users = User::where('role', 'general')->get();
         return view('admin.staff-list', compact('users'));
     }
 
-    /**
-     * 勤怠詳細画面（管理者） 【/admin/attendance/{id}】 (表示・GET)
-     */
+    // 勤怠詳細画面（管理者）
     public function showAdminDetail($id): View
     {
         $attendance = Attendance::with('breaksLogs')->findOrFail($id);
@@ -107,7 +100,6 @@ class AdminAttendanceController extends Controller
 
     public function showApprovalDetail($id): View
     {
-        // 申請データ(AttendanceCorrection)を主軸として取得し、リレーションをEager Loadします
         $application = AttendanceCorrection::with('user')->findOrFail($id);
         $user = $application->user;
 
@@ -120,7 +112,7 @@ class AdminAttendanceController extends Controller
             $application->new_date = Carbon::parse($application->attendance->date);
         }
 
-        // 💡 修正申請で提案されている休憩データをブレードのループ（$application->proposalBreaks）へマッピングして供給します
+        // 修正申請で提案されている休憩データをブレードのループ（$application->proposalBreaks）へマッピングして供給します
         // json_encodeされた休憩データを、ブレードがオブジェクト形式のプロパティチェーン（->break_in）で読めるようにFluentに変換します
         $decodedBreaks = json_decode($application->new_breaks, true) ?? [];
         $proposalBreaksCollection = collect();

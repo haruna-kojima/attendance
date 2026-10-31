@@ -19,10 +19,6 @@ class AttenndanceRequest extends Model
         'status',
     ];
 
-    // protected $casts = [
-    // 'requested_breaks' => 'array',
-    // ];
-
     public function user()
     {
         return $this->belongsTo(User::class);

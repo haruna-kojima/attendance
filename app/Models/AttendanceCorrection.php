@@ -19,19 +19,31 @@ class AttendanceCorrection extends Model
         'comment',
     ];
 
-    // 勤怠実績とのリレーション
+    /**
+     * 勤怠実績とのリレーション
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function attendance()
     {
         return $this->belongsTo(Attendance::class);
     }
 
-    // 申請者（ユーザー）とのリレーション
+    /**
+     * 申請者（ユーザー）とのリレーション
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    // 休憩の修正申請（子データ）とのリレーション
+    /**
+     * 休憩の修正申請（子データ）とのリレーション
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function breakCorrections()
     {
         return $this->hasMany(BreakCorrection::class, 'attendance_correction_id');

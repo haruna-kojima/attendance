@@ -13,10 +13,9 @@ class User extends Authenticatable implements MustVerifyEmail
     use HasApiTokens, HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
+     * 
+     * 一括画面登録を許可するデータベースの項目
+　   */
     protected $fillable = [
         'name',
         'email',
@@ -26,9 +25,7 @@ class User extends Authenticatable implements MustVerifyEmail
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
+     * 変換時に機密項目を画面に漏洩させない
      */
     protected $hidden = [
         'password',
@@ -36,9 +33,8 @@ class User extends Authenticatable implements MustVerifyEmail
     ];
 
     /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
+     * datetimeで日付オブジェクト（carbon）に変換
+     * hashedでパスワードを暗号化
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
@@ -52,7 +48,9 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function getAdminStatusAttribute(): bool
     {
-        // ロールが admin の場合に true を返すことで、管理者ヘッダーが正常に出現します
+        /**
+         * roleがadminの場合、trueを返す
+         */
         return $this->role === 'admin';
     }
 }
