@@ -94,7 +94,7 @@ erDiagram
     users ||--o{ attendances : "複数の勤怠を持つ"
     users ||--o{ attendance_corrections : "複数の修正申請を持つ"
     attendances ||--o{ breaks : "複数の休憩を持つ"
-    attendances ||--o{ attendance_corections : "複数の修正申請を持つ"
+    attendances ||--o{ attendance_corrections : "複数の修正申請を持つ"
 
 
     users {
