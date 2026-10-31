@@ -17,7 +17,12 @@ COACHTECH 勤怠管理アプリ
     ※ MySQLは、OSによって起動しない場合があるのでそれぞれのPCに合わせて docker-compose.ymlファイルを編集してください。
 ````
 
-2. **.env.exampleの中身を確認**
+3. **.envファイルの準備**
+````
+    cp .env.example .env
+````
+
+2. **.envの中身を確認**
 
 データベース接続情報が以下と一致していることを確認します。
 ````
@@ -33,10 +38,7 @@ COACHTECH 勤怠管理アプリ
     MAIL_PORT=1025
 ````
 
-3. **.envファイルの準備**
-````
-    cp .env.example .env
-````
+
 4. **Composer依存パッケージのインストール**
 
 ````
