@@ -15,17 +15,19 @@ use Illuminate\View\View;
 
 class AdminAttendanceController extends Controller
 {
-    // 勤怠一覧画面（管理者）
+    /**
+     * dateから日付を取得し、前後日のリンク用日付をビューに渡す。
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return View admin.admin-attendance-list 勤怠一覧画面のビュー
+     */
     public function showDaily(Request $request): View
     {
         $dateStr = (string) $request->query('date', Carbon::today()->format('Y-m-d'));
         $date = Carbon::parse($dateStr);
         $previousDay = $date->copy()->subDay()->format('Y-m-d');
         $nextDay = $date->copy()->addDay()->format('Y-m-d');
-
-        // 一般ユーザー一覧を取得
         $users = User::where('role', 'general')->get();
-
         //N+1解消 ループに入る前に、本日の勤怠実績と休憩ログを一括で Eager Loading
         $todayAttendances = Attendance::with('breaksLogs')
             ->where('date', $dateStr)
@@ -65,19 +67,24 @@ class AdminAttendanceController extends Controller
         return view('admin.admin-attendance-list', compact('users', 'attendance', 'attendanceRecords', 'date', 'previousDay', 'nextDay'));
     }
 
-    // スタッフ一覧画面(管理者)
+    /**
+     * @return View admin.staff-list スタッフ一覧画面のビュー
+     */
     public function showStaffList(): View
     {
         $users = User::where('role', 'general')->get();
         return view('admin.staff-list', compact('users'));
     }
 
-    // 勤怠詳細画面（管理者）
+    /**
+     * 勤怠データのユーザー情報、休憩ログを取得。
+     * @param  $id  勤怠レコードのID
+     * @return View showApprovalDetail($id) 勤怠詳細画面のビュー
+　　 */
     public function showAdminDetail($id): View
     {
         $attendance = Attendance::with('breaksLogs')->findOrFail($id);
         $user = User::findOrFail($attendance->user_id);
-
         $attendanceRecord = [
             'id'        => $attendance->id,
             'year'      => Carbon::parse($attendance->date)->format('Y年'),
@@ -98,22 +105,32 @@ class AdminAttendanceController extends Controller
         return view('admin.admin-detail', compact('attendanceRecord', 'user'));
     }
 
+    /**
+     * 承認詳細画面の表示
+     *
+     * @param $id attendance_correctionsのID
+     * @return View admin.admin-application-detail 修正申請承認画面のビュー
+     */
     public function showApprovalDetail($id): View
     {
         $application = AttendanceCorrection::with('user')->findOrFail($id);
         $user = $application->user;
 
-        // 管理者1枚目のブレード内での「$application->new_date->format()」というCarbonインスタンス利用に備え、
-        // データベースから読み込んだ日付文字列をCarbonインスタンスへ動的にパース・キャストしてセットします。
-        // ※（モデルの $casts で new_date => 'date' が未設定の場合の保険です）
+        /**
+         * 管理者1枚目のブレード内での「$application->new_date->format()」というCarbonインスタンス利用に備え、
+         * データベースから読み込んだ日付文字列をCarbonインスタンスへ動的にパース・キャストしてセットします。
+         * ※（モデルの $casts で new_date => 'date' が未設定の場合の保険です）
+         */
         if (is_string($application->new_date)) {
             $application->new_date = Carbon::parse($application->new_date);
         } elseif (!$application->new_date && $application->attendance) {
             $application->new_date = Carbon::parse($application->attendance->date);
         }
 
-        // 修正申請で提案されている休憩データをブレードのループ（$application->proposalBreaks）へマッピングして供給します
-        // json_encodeされた休憩データを、ブレードがオブジェクト形式のプロパティチェーン（->break_in）で読めるようにFluentに変換します
+        /**
+         * 修正申請で提案されている休憩データをブレードのループ（$application->proposalBreaks）へマッピングして供給します
+         * json_encodeされた休憩データを、ブレードがオブジェクト形式のプロパティチェーン（->break_in）で読めるようにFluentに変換します
+         */
         $decodedBreaks = json_decode($application->new_breaks, true) ?? [];
         $proposalBreaksCollection = collect();
         foreach ($decodedBreaks as $b) {
@@ -124,19 +141,23 @@ class AdminAttendanceController extends Controller
         }
         $application->proposalBreaks = $proposalBreaksCollection;
 
-        // 💡 戻り先ビューを、承認用の「admin.admin-application-detail」（管理者1枚目）に設定
         return view('admin.admin-application-detail', compact('application', 'user'));
     }
 
+    /**
+     * スタッフごとの月別勤怠一覧画面の表示
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param $id ユーザーのID
+     * @return View admin.staff-attendance-list
+     */
     public function showStaffMonthly(Request $request, $id): View
     {
         $user = User::findOrFail($id);
         $dateStr = $request->query('date', Carbon::now()->format('Y-m'));
         $date = Carbon::createFromFormat('Y-m', $dateStr)->startOfMonth();
-
         $previousMonth = $date->copy()->subMonth()->format('Y-m');
         $nextMonth = $date->copy()->addMonth()->format('Y-m');
-
         $formattedAttendanceRecords = [];
         $attendances = Attendance::with('breaksLogs')->where('user_id', $user->id)
             ->whereBetween('date', [$date->copy()->startOfMonth()->format('Y-m-d'), $date->copy()->endOfMonth()->format('Y-m-d')])
@@ -175,7 +196,7 @@ class AdminAttendanceController extends Controller
     }
 
     /**
-     * 勤怠詳細画面（管理者） 【/admin/attendance/{id}】 (直接修正・POST)
+     * 勤怠データの更新（管理者）
      */
     public function updateDirectly(AdminAttendanceUpdateRequest $request, int $id): RedirectResponse
     {

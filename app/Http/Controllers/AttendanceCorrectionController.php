@@ -15,7 +15,11 @@ use Illuminate\Support\Fluent;
 
 class AttendanceCorrectionController extends Controller
 {
-    // 修正申請一覧の表示
+    /**
+     * 修正申請一覧の表示
+     * 管理者に限り、ユーザーの勤怠情報、修正申請内容を取得。
+     * @return View user.user-application-list 
+     */
     public function index(): View
     {
         $user = auth()->user();
@@ -70,7 +74,13 @@ class AttendanceCorrectionController extends Controller
         }
     }
 
-    // 一般ユーザーからの修正申請の保存
+    /**
+     * 一般ユーザーからの修正申請の保存
+     *
+     * @param AttendanceCorrectionRequest $request
+     * @param $attendanceId
+     * @return RedirectResponse
+     */
     public function applyCorrection(AttendanceCorrectionRequest $request, $attendanceId): RedirectResponse
     {
         $user = auth()->user();
@@ -101,7 +111,13 @@ class AttendanceCorrectionController extends Controller
     }
 
 
-    // 管理者による申請の承認処理
+    /**
+     * 管理者による申請の承認処理
+     *
+     * @param Request $request
+     * @param $attendance_correct_request_id
+     * @return RedirectResponse
+     */
     public function approve(Request $request, $attendance_correct_request_id): RedirectResponse
     {
         $correction = AttendanceCorrection::findOrFail($attendance_correct_request_id);
