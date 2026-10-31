@@ -10,7 +10,7 @@ COACHTECH 勤怠管理アプリ
 ## 環境構築手順
 
 1. **リポジトリをクローン**
-````bash
+````
     git clone https://github.com/haruna-kojima/attendance.git
     cd attendance
 
@@ -20,7 +20,7 @@ COACHTECH 勤怠管理アプリ
 2. **.env.exampleの中身を確認**
 
 データベース接続情報が以下と一致していることを確認します。
-````bash
+````
     DB_CONNECTION=mysql
     DB_HOST=mysql
     DB_PORT=3306
@@ -34,12 +34,12 @@ COACHTECH 勤怠管理アプリ
 ````
 
 3. **.envファイルの準備**
-````bash
+````
     cp .env.example .env
 ````
 4. **Composer依存パッケージのインストール**
 
-````bash
+````
     docker run --rm \
         -u "$(id -u):$(id -g)" \
         -v "$(pwd):/var/www/html" \
@@ -51,41 +51,38 @@ COACHTECH 勤怠管理アプリ
 
 5. **Laravel Sailの起動**
 
-````bash
+````
     ./vendor/bin/sail up -d --build
 ````
 
 6. **アプリケーションキーの生成**
 
-````bash
+````
     ./vendor/bin/sail artisan key:generate
 ````
 
 7. **データベースのマイグレーションと初期データ投入**
 
-````bash
+````
     ./vendor/bin/sail artisan migrate --seed
 ````
 
 8. **フロントエンドのビルド**
 
-````bash
+````
     ./vendor/bin/sail npm install
     ./vendor/bin/sail npm run dev
 ````
 
 9. **アプリケーションへのアクセス**
 
-````bash
-    一般ユーザーログイン http://localhost/login
-    管理者ログイン http://localhost/admin/login
+一般ユーザーログイン http://localhost/login
+管理者ログイン http://localhost/admin/login
 
-    ユーザー情報
-    ユーザー1（一般）　メールアドレス：user1@example.com　パスワード：password
-    ユーザー2（一般）　メールアドレス：user2@example.com　パスワード：password
-    ユーザー2（管理者）　メールアドレス：user3@example.com　パスワード：password
-````
-
+ユーザー情報
+ユーザー1（一般）　メールアドレス：user1@example.com　パスワード：password
+ユーザー2（一般）　メールアドレス：user2@example.com　パスワード：password
+ユーザー2（管理者）　メールアドレス：user3@example.com　パスワード：password
 
 ## ER図
 
@@ -146,39 +143,38 @@ erDiagram
  
 ## 使用技術
 
-````bash
-    - Laravel 10.x
-    - PHP 8.2
-    - Tailwind CSS
-    - DB MySQL8.4
-    - Webサーバー Nginx
-    - フロントエンド Vite, Tailwind CSS ^3.4.0
-    - 開発ツール Docker,Laravel Sail,phpAcmin
-````
+- Laravel 10.x
+- PHP 8.2
+- Tailwind CSS
+- DB MySQL8.4
+- Webサーバー Nginx
+- フロントエンド Vite, Tailwind CSS ^3.4.0
+- 開発ツール Docker,Laravel Sail,phpAcmin
 
 ## APIエンドポイント一覧
     
-| 処理内容 | HTTPメソッド | パス (URL) | 必須パラメータ | HTTPステータス |
-| :--- | :---: | :--- | :--- | :---: |
-| **お問い合わせ一覧取得** | `GET` | `/api/v1/contacts` | 任意 (検索・ページネーション) | `200 OK` |
-| **お問い合わせ詳細取得** | `GET` | `/api/v1/contacts/{id}` | パスパラメータ: `id` | `200 OK` / `404` |
-| **お問い合わせ新規作成** | `POST` | `/api/v1/contacts` | リクエストボディ (全必須項目) | `201 Created` / `422` |
-| **お問い合わせ情報の更新** | `PUT` | `/api/v1/contacts/{id}` | リクエストボディ、パス: `id` | `200 OK` / `404` / `422` |
-| **お問い合わせデータの削除** | `DELETE` | `/api/v1/contacts/{id}` | パスパラメータ: `id` | `204 No Content` / `404` |
+| 処理内容 | HTTPメソッド | パス (URL) | 認証 |
+| :--- | :---: | :--- | :--- |
+| **勤怠一覧取得** | `GET` | `/api/v1/attendance-records` | 不要 |
+| **勤怠詳細取得** | `GET` | `/api/v1/attendance-records/{attendanceRecord}` | 不要 |
+| **勤怠新規作成** | `POST` | `/api/v1/attendance-records` | sanctum認証必須 |
+| **勤怠情報の更新** | `PUT` | `/api/v1/attendance-records/{id}` | sanctum認証必須、認可必須 |
+| **勤怠データの削除** | `DELETE` | `/api/v1/attendance-records/{id}` | sanctum認証必須、認可必須 |
 
 ## テスト実行
 
-````bash
+````
     単体テストの実行
-    .vendor/bin/sail artisan test tests/Unit/ContactWebUnitTest.php
+    .vendor/bin/sail artisan test tests/Unit/AttendanceTimeTest.php
     すべてのテストを一括実行
     ./vendor/bin/sail artisan test --display-deprecations
 ````
 
 ## 開発環境URL
-````bash
-    お問い合わせフォーム http://localhost
-    管理者ログイン http://localhost/login
+````
+　　会員登録 http://localhost/register
+    管理者ログイン http://localhost/admin/login
+    一般ログイン http://localhost/login
 ````
 
 ## 作成者
