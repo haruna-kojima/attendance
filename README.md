@@ -101,7 +101,7 @@ erDiagram
         bigint id PK "ID"
         string name "名前"  
         string email "メールアドレス"
-        timestamp email_verified_at ”メール確認日時”
+        timestamp email_verified_at "メール確認日時"
         string password "パスワード"
         string role "権限(デフォルト:heneral)"
         string remember_token "ログイン保持トークン"
