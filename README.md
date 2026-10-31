@@ -166,10 +166,8 @@ erDiagram
 ## テスト実行
 
 ````
-    単体テストの実行
-    .vendor/bin/sail artisan test tests/Unit/AttendanceTimeTest.php
     すべてのテストを一括実行
-    ./vendor/bin/sail artisan test --display-deprecations
+    ./vendor/bin/sail artisan test
 ````
 
 ## 開発環境URL
