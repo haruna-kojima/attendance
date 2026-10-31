@@ -73,7 +73,7 @@ COACHTECH 勤怠管理アプリ
 
 ````
     ./vendor/bin/sail npm install
-    ./vendor/bin/sail npm run dev
+    ./vendor/bin/sail npm run build
 ````
 
 9. **アプリケーションへのアクセス**
